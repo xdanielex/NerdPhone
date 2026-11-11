@@ -1,0 +1,52 @@
+{
+  "pool": "pool.nerdminer.io:3333",
+  "userAgent": "NerdMinerV2/V1.8.3",
+  "requestedDifficulty": 0.001,
+  "authorizedWithFreshTestAddress": true,
+  "sharesSubmitted": 0,
+  "messages": [
+    {
+      "result": [
+        [
+          [
+            "mining.notify",
+            "767f80fe"
+          ]
+        ],
+        "3739b671",
+        8
+      ],
+      "id": 1,
+      "error": null
+    },
+    {
+      "params": [
+        1
+      ],
+      "id": null,
+      "method": "mining.set_difficulty"
+    },
+    {
+      "method": "mining.notify",
+      "jobId": "6abca4850005ae9e",
+      "cleanJobs": true
+    },
+    {
+      "params": [
+        1
+      ],
+      "id": null,
+      "method": "mining.set_difficulty"
+    },
+    {
+      "result": true,
+      "error": null,
+      "id": 2
+    },
+    {
+      "method": "mining.notify",
+      "jobId": "6abca4850005ae9f",
+      "cleanJobs": false
+    }
+  ]
+}

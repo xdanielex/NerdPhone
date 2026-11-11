@@ -1,0 +1,29 @@
+name: Test and verify Android build
+on: [push, pull_request, workflow_dispatch]
+permissions:
+ contents: read
+jobs:
+ build:
+  runs-on: ubuntu-latest
+  timeout-minutes: 30
+  steps:
+   - uses: actions/checkout@v4
+   - name: Run offline host tests
+     run: bash tests/run_host_tests.sh
+   - uses: actions/setup-java@v4
+     with:
+      distribution: temurin
+      java-version: '17'
+   - uses: android-actions/setup-android@v3
+   - uses: gradle/actions/setup-gradle@v4
+   - name: Install Android toolchain
+     run: sdkmanager "platforms;android-35" "build-tools;35.0.0" "ndk;27.0.12077973" "cmake;3.22.1"
+   - name: Build APK with pinned Gradle Wrapper
+     run: |
+      chmod +x gradlew
+      ./gradlew --no-daemon :app:assembleDebug --stacktrace
+   # Verification only: do not upload APKs/AABs or attach binaries to releases.
+   # The public source remains freely buildable under the project license.
+   - name: Remove generated distributable packages
+     if: always()
+     run: rm -rf app/build/outputs/apk app/build/outputs/bundle

@@ -1,0 +1,5 @@
+cmake_minimum_required(VERSION 3.22.1)
+project(nerdphone LANGUAGES CXX)
+add_library(nerdphone SHARED engine.cpp)
+target_compile_features(nerdphone PRIVATE cxx_std_17)
+target_compile_options(nerdphone PRIVATE -O3 -Wall -Wextra)

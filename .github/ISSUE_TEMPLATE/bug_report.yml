@@ -1,0 +1,39 @@
+name: Bug report
+description: Report a reproducible application problem.
+title: "[Bug] "
+body:
+ - type: markdown
+   attributes:
+    value: "Do not include seeds, private/signing keys, sensitive passwords, or unredacted logs. Public BTC addresses can identify your activity; redact them if desired."
+ - type: input
+   id: app
+   attributes:
+    label: App version and APK source
+    placeholder: "0.2.1, self-built or release APK"
+   validations:
+    required: true
+ - type: input
+   id: device
+   attributes:
+    label: Phone model and Android version
+   validations:
+    required: true
+ - type: input
+   id: workers
+   attributes:
+    label: Available CPUs / selected mining workers
+ - type: input
+   id: pool
+   attributes:
+    label: Pool host, port and assigned difficulty (no wallet address needed)
+ - type: textarea
+   id: reproduction
+   attributes:
+    label: Steps to reproduce and expected/actual behavior
+   validations:
+    required: true
+ - type: textarea
+   id: diagnostics
+   attributes:
+    label: Exact error and sanitized diagnostics/screenshots
+    description: Include whether it happens with screen on/off, charging, battery restrictions, Wi-Fi or mobile data.
