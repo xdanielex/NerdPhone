@@ -1,6 +1,6 @@
 # Distribution signing
 
-Version 0.2.2 (versionCode 8) introduced the private distribution signing identity instead of the Android Debug certificate. Version 0.2.3 (versionCode 9) reuses the same identity and adds launcher artwork. The selected 0.2.4-midstate-test build (versionCode 10) also reuses this identity and includes optimized header hashing. This is direct APK distribution, not Play App Signing. It does not imply store approval or a security audit.
+Release APKs are signed with a private RSA-3072 distribution identity, not the Android Debug certificate. The current build, **0.2.4-midstate-test** (versionCode 10), uses this identity. This is direct APK distribution, not Play App Signing, and it does not imply store approval or a security audit.
 
 ## Build public source without secrets
 
