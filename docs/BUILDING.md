@@ -45,4 +45,4 @@ Review/redact the log before sharing it. Include the app version, model, Android
 
 ## Signing
 
-Debug builds use a development keystore. Updates require the same package name/signing identity and a valid version progression. CI may generate a different debug key on a fresh runner. Distribution signing is intentionally separate from Gradle/CI; see [the signing procedure](DISTRIBUTION-SIGNING.md). A new private distribution identity was generated for 0.2.2; its key/passwords are not in this repository and must be backed up by the maintainer. Never commit a key or paste a private key/token into an issue or chat.
+Debug builds use a development keystore. Updates require the same package name/signing identity and a valid version progression. CI may generate a different debug key on a fresh runner. Distribution signing is intentionally separate from Gradle/CI; see [the signing procedure](DISTRIBUTION-SIGNING.md). The private distribution identity used for release APKs is not in this repository and must be backed up by the maintainer. Never commit a key or paste a private key/token into an issue or chat.
