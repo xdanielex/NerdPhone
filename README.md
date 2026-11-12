@@ -200,7 +200,6 @@ GitHub Actions runs the offline tests and compiles a debug APK only to verify th
 - [Technical guide](docs/TECHNICAL.md)
 - [Build instructions](docs/BUILDING.md)
 - [Field report](docs/benchmarks/first-device.md)
-- [Screenshot guide](docs/SCREENSHOTS.md)
 - [Roadmap](docs/ROADMAP.md)
 - [Contributing](CONTRIBUTING.md) · [Security and safety](SECURITY.md)
 
