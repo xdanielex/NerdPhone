@@ -8,6 +8,8 @@ NerdPhone is a native **C++ SHA-256d miner** with **Stratum V1 networking** and 
 
 > **This is lottery mining, for learning.** It is not an investment and not a realistic source of income. On the tested device the expected time to find a block is measured in millions of years. Mining uses electricity and wears the battery. There is no yield, no return and no financial advice here.
 
+**In a hurry?** The same build is available as a [signed APK for €5](https://xdrufox.gumroad.com/l/nerdphone); building from source is free.
+
 ## What it does
 
 - **Configurable multi-threaded mining:** from one to every logical CPU currently available to the app, plus a separate thread dedicated to pool networking.
@@ -114,7 +116,12 @@ So: someone eventually wins the SuperEnalotto with a single ticket, and small so
 
 ## Install and start
 
-**The source is free: build it yourself at no cost** ([build instructions](docs/BUILDING.md)). A ready-to-install **signed APK** is offered separately as a convenience for people who do not want to install a toolchain; the source licence is not restricted by that purchase.
+**The source is free: build it yourself at no cost** ([build instructions](docs/BUILDING.md)).
+
+> ### Ready-to-install signed APK — €5
+> **[xdrufox.gumroad.com/l/nerdphone](https://xdrufox.gumroad.com/l/nerdphone)**
+>
+> One ZIP: the signed APK, the installation guide, the SHA-256 checksums and the licence. Optional — the source below stays free and MIT, and the purchase restricts none of your rights under that licence.
 
 This repository and its CI **do not distribute APK/AAB artefacts**.
 
