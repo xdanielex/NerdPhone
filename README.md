@@ -2,67 +2,125 @@
 
 <img src="branding/nerdphone-icon-512.png" alt="NerdPhone app icon" width="96" height="96">
 
-**Give an old Android phone a second life as an educational Bitcoin solo miner.**
+**Turn an old Android phone into an educational Bitcoin solo miner.**
 
-NerdPhone combines a native **C++ SHA-256d miner**, **Stratum V1 networking** and an **English Kotlin/Jetpack Compose interface**. Select how many mining threads to run, inspect the jobs received from your pool, and verify actual accepted shares—not just a local hash-rate counter.
+NerdPhone is a native **C++ SHA-256d miner** with **Stratum V1 networking** and an **English Kotlin/Jetpack Compose interface**, running on the phone you already own. You choose how many mining workers to run, you can inspect the jobs your pool sends, and you can see shares actually accepted by the pool instead of trusting a local counter.
 
-> **Experimental, educational software.** Not a wallet, not a realistic source of income, and not affiliated with NerdMiner, its developers or any pool operator. Mining can heat your phone, consume electricity and wear its battery.
+> **This is lottery mining, for learning.** It is not an investment and not a realistic source of income. On the tested device the expected time to find a block is measured in millions of years. Mining uses electricity and wears the battery. There is no yield, no return and no financial advice here.
 
 ## What it does
 
-- **Configurable multi-threaded mining:** one to the logical CPUs currently available to the app, with a separate pool-networking thread.
-- **Per-device CPU detection** and a three-second offline hash-rate test.
-- **Real share statistics:** submitted, accepted, rejected and unknown outcomes; total and per-miner hash rates.
-- **Live Stratum diagnostics:** received/assigned/started jobs, job IDs, working-job hashes, difficulty, `clean_jobs` and message age.
-- **Screen-off support:** foreground service, persistent Stop notification and partial wake lock, subject to Android/OEM restrictions.
-- **Block candidate detection:** compare the full hash to the network target, display an alert and submit to the pool. This is not automatic confirmation of a Bitcoin block.
-- **No application CPU throttle:** selected workers hash continuously while valid work is available. Android thermal and power protections still apply.
+- **Configurable multi-threaded mining:** from one to every logical CPU currently available to the app, plus a separate thread dedicated to pool networking.
+- **Per-device CPU detection** and a three-second offline hash-rate test that submits nothing to the pool.
+- **Real share statistics:** submitted, accepted, rejected and unknown outcomes, with total and per-worker hash rates.
+- **Live Stratum diagnostics:** jobs received/assigned/started, job IDs, hashes on the current job, difficulty, `clean_jobs` and message age.
+- **Screen-off operation:** foreground service, persistent notification and partial wake lock, subject to Android and OEM background restrictions.
+- **Block candidate detection:** the full header hash is compared against the network target, the alert is shown and the share is submitted. This is not a Bitcoin block confirmation.
+- **No application-level CPU cap:** the selected workers hash continuously while valid work exists. Android thermal and power protection still applies.
+- **Midstate optimisation** in the hashing hot path: the first SHA-256 compression state for each 80-byte header is computed once per job and reused for every nonce, so each nonce costs two compressions instead of three.
 
-## Current status
+## Screenshots
 
-**The midstate-optimized build, `0.2.4-midstate-test`, is now the preferred build for continued testing following a successful first-device screen-off trial.** It is a signed, non-debuggable release APK—not a debug build. Its existing version name and binary are unchanged; this documentation update does not create a new release or imply broad compatibility certification.
+Real captures from the UMIDIGI Power 3 used for the field test, mining with eight workers. The Bitcoin address field has been redacted.
 
-### First optimized-build field test
+<p>
+  <img src="docs/images/01-dashboard.png" alt="NerdPhone dashboard showing 4010.16 kH/s and eight mining workers" width="240">
+  <img src="docs/images/02-cpu-threads.png" alt="Eight active miners with individual hash rates" width="240">
+</p>
 
-Tested by the project maintainer on a **repurposed UMIDIGI Power 3 running Android 10**, using **eight mining workers**, connected to `pool.nerdminers.org:3333` at reported assigned difficulty **0.001**:
+<p>
+  <img src="docs/images/03-shares-jobs.png" alt="56952 accepted shares, 47 rejected, Stratum job diagnostics" width="240">
+  <img src="docs/images/04-pool-config.png" alt="Pool configuration with TCP port 3333 and redacted BTC address" width="240">
+</p>
 
-| Observation | Reported result |
+- **Dashboard:** 4,010 kH/s local, status *Mining*.
+- **Workers:** eight miners, from 462 to 528 kH/s each, plus the dedicated pool thread.
+- **Shares:** 56,952 accepted of 56,999 submitted; the 47 rejections were `Stale`.
+- **Connection:** `pool.nerdminers.org` on TCP 3333, difficulty 0.001, address redacted.
+
+**Pool side, from the same session:** one worker, ~4 MH/s in the pool's own estimate, best share difficulty 74.563. Each major grid interval is three hours.
+
+<img src="docs/images/pool-stats.png" alt="Pool dashboard showing about 4 MH/s and best difficulty 74.563" width="900">
+
+> Pool-side estimates depend on share arrivals and smoothing windows. They are not a local benchmark.
+
+## Measured on real hardware
+
+Everything below was observed on one **repurposed UMIDIGI Power 3 running Android 10**, with **eight mining workers**, screen off, connected to `pool.nerdminers.org:3333` with pool-assigned difficulty **0.001**. It is a single device and a single operator's session: treat it as a field report, not a compatibility or performance certification.
+
+| Observation | Result |
 |---|---|
-| Screen state | Screen off throughout the documented optimized trial |
-| Interval between first and latest supplied snapshots | **21 minutes 59 seconds** |
-| Worker share counter | **186 → 1,400**, an increase of **1,214** |
-| Share-equivalent average over that interval | **Approximately 3.95 MH/s**, assuming one difficulty-0.001 share per counter increment |
-| Latest five-minute pool estimate | **3.86 MH/s** |
-| Highest supplied one-minute pool estimate | **4.67 MH/s**, a short-window estimate, not sustained throughput |
-| Acceptance | Tester reported all shares accepted at successive checks; latest explicit all-accepted check was at counter **942** |
-| Perceived heating | Tester reported the phone remained **cold to the touch**, with no noticeable heating |
+| Duration of the extended run | About **12 hours** screen off after installing the current build, with each pool graph division equal to **3 hours** |
+| Pool-side hash rate over that run | Repeatedly near **4 MH/s** (`hashrate1hr` typically 3.9–4.0 MH/s in the supplied snapshots) |
+| Shares | **56,952 accepted** of **56,999 submitted** in the captured session; counters carried over from 186 at the first snapshot, an interval-equivalent average near **4.0 MH/s** assuming one difficulty-0.001 share per increment |
+| Rejections | **47**, all reported as `Stale` — about **0.08%**; no other rejection pattern observed |
+| Best share | **74.5631** difficulty (raised from 40.51 earlier in the same session) |
+| Perceived heating | **Cold to the touch** throughout; no fan or cooling accessory used |
+| Internal temperature, power at the wall | **Not measured** |
 
-The approximately **3.95 MH/s** interval estimate is about **2.2×** the approximately **1.78 MH/s** inferred from the documented earlier, unoptimized session on the same phone. These were separate field sessions, not a controlled simultaneous A/B test. The earlier approximately two-hour screen-off report belongs to the older engine and must not be attributed to the optimized build.
+The initial gap in the pool graph corresponds to a deliberate stop to install the update, not to a miner failure.
 
-**Internal/battery temperatures and power consumption were not measured.** This successful first-device trial supports keeping the optimized build as the reference for further testing, not claims of universal performance, certified safety, measured energy efficiency or long-term stability. See the [field report](docs/benchmarks/first-device.md) and [optimization/rollback notes](docs/MIDSTATE-EXPERIMENT.md).
+### The two hash-rate numbers, and why they differ
 
-### Around 69 × 57 kH/s devices on the observed interval
+The app counts hashes computed on the device; the pool estimates work from the shares it receives. They answer different questions and will not match exactly.
 
-At approximately **3.95 MH/s**, the optimized phone's share-equivalent throughput corresponds to about **69 devices each hashing at 57 kH/s**. The short one-minute pool estimate of **4.67 MH/s** corresponds to about **82**, but is not the sustained average.
+| Number | Where it comes from | What it means |
+|---|---|---|
+| **~4,000 kH/s** in the app | Native worker counters, shown in kH/s | Local computation rate; short intervals can be quantised by counter batching |
+| **~4 MH/s** on the pool | Pool estimate from accepted shares | Throughput the pool actually observed; smoothed and share-luck dependent |
+
+Both are reported here so neither is mistaken for the other. A local counter alone does not prove valid submission, and a pool estimate alone does not prove the local loop is efficient.
+
+### About 70 NerdMiner-class devices, in hash rate only
 
 ```text
-3,950 kH/s ÷ 57 kH/s ≈ 69
-4,670 kH/s ÷ 57 kH/s ≈ 82 (short-window pool estimate only)
+4,000 kH/s ÷ 57 kH/s ≈ 70
 ```
 
-The **57 kH/s baseline was supplied by the tester**; not all NerdMiner models or firmware versions run at that speed. Against a seller-declared **307 kH/s** device, the same 3.95 MH/s interval is approximately **13 devices**, assuming that advertised rate is achieved. These are arithmetic comparisons, not side-by-side hardware tests, and **do not compare energy use, purchase cost or reliability**. ASIC-based products marketed with similar names are a different performance class.
+The **57 kH/s** figure is the reference rate supplied by the tester; not every NerdMiner model or firmware version reaches it. Against a seller-declared **307 kH/s** device the same throughput would be roughly **13 devices**, assuming that advertised rate is actually achieved.
 
-The source remains free to build. The optimized implementation caches the first SHA-256 compression state for each header and uses fixed-size buffers in the nonce loop; networking, targets, worker partitioning and screen-off service behavior are unchanged. Generic hashing remains as a correctness reference. Offline verification includes **20,480 header/nonce equivalence cases**, known-answer tests and independent simulated-pool share validation. APK compilation and signature verification passed. More devices and longer-duration tests are welcome.
+This is **arithmetic on hash rate**, nothing more: it is not a side-by-side hardware test and it says nothing about energy use, purchase cost or reliability. A phone running NerdPhone was also **cold to the touch with no fan or cooling accessory**, whereas some small miners are sold with fans that add their own consumption—but that too is an observation from one device, not a measured efficiency comparison. ASIC products with similar names belong to a different performance class entirely.
+
+## Battery and heat
+
+A separate unplugged run started at **90% at 10:13**, with eight workers and the screen off:
+
+| Time | Battery | Elapsed |
+|---|---|---|
+| 10:13 | 90% | start |
+| 10:32 | 87% | 19 min |
+| ~10:46 | 85% | 33 min |
+| 11:15 | 80% | 62 min |
+
+That is about **10% of battery per hour**, roughly **9 hours 20 minutes projected from 90%**, while the pool continued to report around 4 MH/s. The phone was recharged after the measurement window ended, so later battery readings in the screenshots (67% at 14:35) belong to a different, post-charge session and are not part of these figures.
+
+For an order-of-magnitude power estimate, assuming the nominal **5,000 mAh at 3.8 V (≈19 Wh)**:
+
+```text
+10% of 19 Wh = 1.9 Wh over 1.03 h  →  ≈1.8 W average for the whole phone
+```
+
+**Caveats, stated plainly:** the battery is a used cell, so its real capacity is likely below 5,000 mAh and this figure is **most likely an overestimate**; the percentage gauge is coarse; and this is the total phone consumption, not the miner alone and not a wall-plug measurement. The honest measured facts are the percentage drop and the reported lack of noticeable heating—not a certified wattage.
+
+## Lottery mining, honestly
+
+`pool.nerdminers.org` is a **solo** pool: every worker mines to its own address, so a block found by that worker pays the whole reward to that worker. It is not split among the pool's participants.
+
+- Subsidy since the April 2024 halving: **3.125 BTC**, plus the transaction fees in the block.
+- The pool dashboard showed **0 blocks found** with about **7.5 GH/s** of combined hobbyist hashrate.
+- At the network difficulty current in November 2026, the expected time for a single ~4 MH/s phone is on the order of **billions of years**, and for the whole pool millions of years.
+
+So: someone eventually wins the SuperEnalotto with a single ticket, and small solo miners have found blocks before. That is exactly the spirit here—a ticket that also teaches you how Bitcoin's proof of work, nonces, extranonce and share difficulty actually work. Do not buy this expecting to win.
 
 ## Install and start
 
-**The source code is free and open source.** [Build it yourself at no cost](docs/BUILDING.md), or support development by purchasing the official ready-to-install APK when it becomes available. The planned price is €5; the purchase link will be added when the download is published.
+**The source is free: build it yourself at no cost** ([build instructions](docs/BUILDING.md)). A ready-to-install **signed APK** is offered separately as a convenience for people who do not want to install a toolchain; the source licence is not restricted by that purchase.
 
-This repository and its CI do not distribute APK/AAB artifacts. Source tags and release notes can remain public. Purchasing a prebuilt package is optional and does not restrict the rights granted by the source license.
+This repository and its CI **do not distribute APK/AAB artefacts**.
 
-1. Install on **Android 8.0/API 26 or newer** and allow notifications.
-2. Enter your **public mainnet Bitcoin address**. Never enter a seed phrase or private key.
-3. Check the default connection:
+1. Install on **Android 8.0 / API 26 or newer** and allow notifications.
+2. Enter your **public mainnet Bitcoin address**. Never a seed phrase, never a private key.
+3. Default connection:
 
    | Setting | Default |
    |---|---|
@@ -71,23 +129,19 @@ This repository and its CI do not distribute APK/AAB artifacts. Source tags and 
    | Pool password | `x` |
    | Requested difficulty | `0.001` |
 
-4. In **CPU DETECTION & MINING THREADS**, start with one or two miners. Optionally run the offline test before connecting. Use **+ / − / Use all** to change the count while stopped.
-5. Tap **START MINING**. Watch the working-job hash count and, most importantly, **ACCEPTED**.
-6. For screen-off use, allow unrestricted battery/background operation in Android settings. Test on your device before leaving it unattended.
+4. In **CPU DETECTION & MINING THREADS**, start with one or two miners. You can run the offline three-second test before connecting, and change the worker count with **+ / − / Use all** while stopped.
+5. Tap **START MINING** and watch **ACCEPTED**, not the hash-rate animation.
+6. For screen-off use, allow unrestricted battery/background operation in Android settings, and test on your own device before leaving it unattended.
 
-`pool.nerdminers.org` is **not** `pool.nerdminer.io`: the endpoints can assign different difficulty values. Existing saved settings survive upgrades. Verify your host after updating.
-
-The pool controls the assigned difficulty. Requesting `0.001` does not force it. An RPC acknowledgement alone is not a target assignment. See [difficulty research](docs/DIFFICULTY-RESEARCH.md).
+`pool.nerdminers.org` is **not** `pool.nerdminer.io`; the two endpoints can assign different difficulties. The pool decides the assigned difficulty—requesting `0.001` does not force it.
 
 ## How to interpret the numbers
 
-- **Local hash rate:** hashes computed by the native workers; short intervals can be quantized by counter batching.
-- **Pool hash rate:** an estimate based on submitted work. It fluctuates with share luck and smoothing windows.
-- **Jobs received:** protocol activity, not proof that share submissions are correct.
-- **Accepted shares:** evidence that the pool accepted that submitted work. They are not Bitcoin block confirmations or periodic payments on a solo pool.
-- **Best share:** difficulty achieved by a share, not the assigned share difficulty or the Bitcoin network difficulty.
-
-At a sustained **1.5 MH/s**, expected time to find a share is about **2.9 seconds at difficulty 0.001**, or **47.7 minutes at difficulty 1**. These are statistical averages, not deadlines; acceptance also requires valid, timely work.
+- **Local hash rate:** hashes computed by the native workers. Short intervals can be quantised by counter batching.
+- **Pool hash rate:** an estimate derived from submitted work. It fluctuates with share luck and smoothing windows.
+- **Jobs received:** protocol activity only—not proof that submissions are correct.
+- **Accepted shares:** the pool accepted that work. They are not block confirmations and, on a solo pool, not periodic payments.
+- **Best share:** the difficulty achieved by a share. Not the assigned difficulty, not the network difficulty, and not progress towards a block.
 
 ## Architecture
 
@@ -103,50 +157,50 @@ Compose UI / Android main looper
 Foreground service + partial wake lock manage background operation.
 ```
 
-Workers search disjoint nonce residue classes for each job/extranonce2, rather than repeating each other's work. CPU threads are scheduled by Android, not pinned to physical cores. The current portable SHA implementation reuses the first-block midstate for 80-byte headers and uses fixed-size buffers in the nonce loop; it does not use ARM SHA instructions.
+Workers search **disjoint nonce residue classes** for each job and `extranonce2`, so they never repeat each other's work. Threads are scheduled by Android and are not pinned to physical cores. The portable SHA implementation reuses the per-header midstate and fixed-size buffers in the nonce loop; it does **not** use ARM SHA instructions.
+
+Correctness is checked offline by **20,480 header/nonce equivalence cases**, known-answer tests, an independent mock pool that validates submitted shares, and strict eight-hex-digit nonce formatting.
 
 ## Build and test
 
-Requirements: **JDK 17**, Android SDK **35**, NDK **27.0.12077973**, CMake **3.22.1**. Gradle Wrapper **8.9** is included with its distribution checksum.
+Requirements: **JDK 17**, Android SDK **35**, NDK **27.0.12077973**, CMake **3.22.1**. The Gradle Wrapper **8.9** is included with its distribution checksum.
 
 ```sh
 ./gradlew :app:assembleDebug
 # APK: app/build/outputs/apk/debug/app-debug.apk
 ```
 
-Offline host tests require Python 3 and a C++17 compiler:
+Offline host tests need Python 3 and a C++17 compiler:
 
 ```sh
 bash tests/run_host_tests.sh
 ```
 
-GitHub Actions runs the offline tests and compiles a debug APK solely to verify the build. It does not upload binary artifacts or publish APKs in releases; generated APK/AAB output directories are removed in an always-run cleanup step. It does not manage a production signing key. See [build instructions](docs/BUILDING.md) and the [release checklist](docs/RELEASING.md).
+GitHub Actions runs the offline tests and compiles a debug APK only to verify that the build works. It uploads no binaries, publishes no releases and does not touch the production signing key. See [build instructions](docs/BUILDING.md), [signing procedure](docs/DISTRIBUTION-SIGNING.md) and the [release checklist](docs/RELEASING.md).
 
 ## Known limitations
 
-- Plaintext TCP Stratum V1 only; **no TLS or Stratum V2**.
-- No guarantees of continuous background operation, temperature, battery life or store eligibility.
-- No automatic restart after reboot/force-stop or process termination.
-- No complete persistent block-candidate dossier or automatic blockchain confirmation. See [technical limitations](docs/TECHNICAL.md).
-- Only initial real-device validation; performance and compatibility vary.
-- The private distribution key must be backed up by the maintainer; the security contact and customer-facing source/download URLs still need configuration before public sale.
-
-Version 0.2.1 fixed a **nonce-format bug**: strict pools rejected short hexadecimal nonces as “No nonce.” Submissions now always use eight hex digits, and the mock enforces that requirement. See the [incident notes](docs/NONCE-FORMAT-FIX.md) and [changelog](CHANGELOG.md).
+- Plaintext TCP **Stratum V1** only: no TLS, no Stratum V2.
+- No guarantee of uninterrupted background operation; Android and OEM power management can throttle or stop the service.
+- No automatic restart after reboot or force-stop.
+- No persisted block-candidate dossier and no automatic blockchain confirmation.
+- Performance and stability vary by device; validation so far covers a single physical device.
+- Battery behaviour depends on the age and health of the cell.
+- No ARM SHA intrinsic acceleration; the heavy path is portable C++.
 
 ## Documentation and contributing
 
 - [Technical guide](docs/TECHNICAL.md)
 - [Build instructions](docs/BUILDING.md)
-- [Private distribution signing procedure](docs/DISTRIBUTION-SIGNING.md)
-- [Field report and benchmark methodology](docs/benchmarks/first-device.md)
-- [Screenshot and photo guide](docs/SCREENSHOTS.md)
+- [Field report](docs/benchmarks/first-device.md)
+- [Screenshot guide](docs/SCREENSHOTS.md)
 - [Roadmap](docs/ROADMAP.md)
 - [Contributing](CONTRIBUTING.md) · [Security and safety](SECURITY.md)
 
-When reporting a problem, include app version, device model, Android version, worker count and a sanitized error. Do not post private keys, seeds, signing keys or sensitive passwords. Bitcoin addresses are public but can link mining activity to your identity; redact them if desired.
+When reporting a problem include the app version, device model, Android version, worker count and a sanitized error message. Never post seeds, private keys, signing keys or pool passwords. Bitcoin addresses are public but can link mining activity to your identity—redact them if you prefer.
 
-## Attribution and license
+## Attribution and licence
 
-Inspired by and adapted against the Stratum flow of [NerdMiner_v2](https://github.com/BitMaker-hub/NerdMiner_v2), pinned at `e3a04b7d9f0b6e60ca6e02f7433c94d78d9dded4` (`V1.8.3`). This is an independent Android port, not the original firmware or a byte-for-byte copy of it.
+Inspired by and written against the Stratum flow of [NerdMiner_v2](https://github.com/BitMaker-hub/NerdMiner_v2), pinned at `e3a04b7d9f0b6e60ca6e02f7433c94d78d9dded4` (`V1.8.3`). NerdPhone is an independent Android implementation, not the original firmware and not a byte-for-byte copy. Not affiliated with NerdMiner, its developers or any pool operator.
 
-**MIT license**, with Bitmaker attribution preserved for reference material. Vendored nlohmann/json is MIT; Gradle Wrapper is Apache-2.0. See [LICENSE](LICENSE) and [third-party notices](reference/).
+**MIT licence**, with Bitmaker attribution preserved for reference material. Vendored nlohmann/json is MIT; the Gradle Wrapper is Apache-2.0. See [LICENSE](LICENSE) and the third-party notices in [reference/](reference/).
