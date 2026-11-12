@@ -31,10 +31,14 @@ A rebuild may have a different APK checksum/signature from the supplied test art
 
 ## Suggested release text
 
-Title: **NerdPhone v0.2.4-midstate-test — Experimental Android Bitcoin solo miner**
+Title: **NerdPhone v0.2.4-midstate-test — Android Bitcoin solo miner (educational)**
 
-> Selected midstate-optimized release build, with configurable C++ workers, Stratum V1, Compose dashboard and offline CPU benchmark. On one UMIDIGI Power 3 / Android 10 with eight workers, supplied pool counters imply approximately 3.95 MH/s over nearly 22 minutes, with screen-off operation reported. All shares were reported accepted at successive checks; no instrumented power or internal-temperature measurement was made. Performance and background behavior vary by device. This is educational lottery mining, not a wallet or income promise.
+> Configurable C++ workers, Stratum V1, Compose dashboard and an offline CPU benchmark, running on a repurposed Android phone.
 >
-> Same distribution signature as 0.2.2/0.2.3, versionCode 10. Existing distribution installs can update; debug installs require uninstall/reinstall. The original lower-version APK cannot normally be installed over this build without uninstalling. See MIDSTATE-EXPERIMENT.md.
+> On one UMIDIGI Power 3 (Android 10) with eight workers and the screen off, the pool estimate stayed near **4 MH/s** for about **twelve hours**. The captured session reported **56,952 accepted** shares of **56,999 submitted**; the **47** rejections were all `Stale`. Battery use was about **10% per hour**, and the phone stayed cold to the touch with no cooling accessory. Internal temperature and wall power were not measured.
+>
+> This is educational lottery mining: there is no expected return, no yield and no investment advice. On a solo pool the block subsidy (3.125 BTC plus fees) goes entirely to whoever finds the block.
+>
+> Distribution-signed, versionCode 10, not debuggable. Because the distribution certificate differs from the debug certificate, a debug install must be uninstalled before installing this APK, and uninstalling loses saved settings.
 
-The name remains `0.2.4-midstate-test` to match the selected, physically tested APK; do not silently rename/rebuild it and claim binary identity. The paid customer package still needs refreshing to this exact APK, its source/tag URL and final installation/support documentation before sale. Existing 0.2.3 customer ZIPs are historical, not the selected optimized product.
+The version name remains `0.2.4-midstate-test` to match the APK that was actually tested; do not silently rename or rebuild it and then claim binary identity. The paid customer package must be built from this exact APK, with its source/tag URL, checksum and final installation and support documentation, before the storefront goes live.
