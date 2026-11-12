@@ -28,7 +28,7 @@ Existing saved pool settings are preserved across upgrades. Pool requirements di
 
 Android/OEM policies may still suspend networking, terminate the app or throttle the CPU. A wake lock does not bypass OS protections. The service does not automatically restart after force-stop, reboot or process termination.
 
-## CPU detection and multi-core mining (0.2.0)
+## CPU detection and multi-core mining
 
 Each activity launch probes this device with native `sched_getaffinity`, `sysconf` configured/online CPU counts and a fallback to available CPU reporting. The picker uses CPUs available to the app, not a hardcoded phone model. Detection is repeated at actual service startup and clamps stale settings to the current available count. Affinity/online availability may change with Android cpusets, power state and foreground/background policy; these counts are observations, not a guarantee of simultaneous execution.
 
@@ -138,17 +138,17 @@ When using the supplied source ZIP, extract it first and run these commands **in
 
 Reference NerdMiner revision: `e3a04b7d9f0b6e60ca6e02f7433c94d78d9dded4`, reporting `V1.8.3`, from https://github.com/BitMaker-hub/NerdMiner_v2.
 
-This is a port of the relevant Stratum flow, not a byte-for-byte copy of the complete firmware. It verifies authorization, supports negotiated extranonce2 sizes 1–32 bytes, increments extranonce2 after nonce exhaustion, parses complete newline-delimited JSON, and tracks share IDs. As of 0.2.1, every submitted nonce is exactly eight lowercase hexadecimal characters with leading zeroes preserved. On a new job the miner switches to the newest template. `clean_jobs=true` invalidates queued old shares; with `false`, still-valid queued shares can be submitted. Reconnection clears current work.
+This is a port of the relevant Stratum flow, not a byte-for-byte copy of the complete firmware. It verifies authorization, supports negotiated extranonce2 sizes 1–32 bytes, increments extranonce2 after nonce exhaustion, parses complete newline-delimited JSON, and tracks share IDs. Every submitted nonce is exactly eight lowercase hexadecimal characters with leading zeroes preserved. On a new job the miner switches to the newest template. `clean_jobs=true` invalidates queued old shares; with `false`, still-valid queued shares can be submitted. Reconnection clears current work.
 
 TCP only: **no TLS or Stratum V2**. The native code reports connection phase, numeric endpoint where available, errno/SO_ERROR and RPC diagnostics. Socket keepalive and `TCP_NODELAY` are enabled. Reconnection uses the configured host, including on `client.reconnect`; arbitrary server-directed endpoints are not followed.
 
 Bounded outgoing queue and pending-share limits protect memory; these are not CPU caps. Hash counters are published in batches of 4,096, so short UI intervals can be quantized. Current counters are session-local; the last observed block candidate is persisted by the Android service. Candidate detection does not query the blockchain to confirm a block.
 
-The portable SHA implementation now includes HeaderHasher: a cached first-block midstate and two fixed-size compression blocks per nonce for 80-byte headers. It is rebuilt whenever the header/extranonce2 changes. Generic sha/sha2 remain unchanged for merkle/coinbase work and correctness comparisons. ARM SHA intrinsics are not implemented. Performance is device-dependent. See [midstate notes](MIDSTATE-EXPERIMENT.md).
+The portable SHA implementation now includes HeaderHasher: a cached first-block midstate and two fixed-size compression blocks per nonce for 80-byte headers. It is rebuilt whenever the header/extranonce2 changes. Generic sha/sha2 remain unchanged for merkle/coinbase work and correctness comparisons. ARM SHA intrinsics are not implemented. Performance is device-dependent; the optimisation changes nothing in networking, targets, worker partitioning or the screen-off service.
 
 ## Validation and limitations
 
-Version 0.2.1 fixes a nonce wire-format bug that caused strict pools to reject short nonces with “No nonce”. Earlier mock tests validated the integer value but were too permissive about its encoded length. The mock now enforces exactly eight hex characters and also uses a nonzero previous hash, nonempty merkle branches and the pool-like eight-byte extranonce2. Host tests cover one and multiple workers, CPU discovery and regression vectors; the APK build/signature are verified. The first tester subsequently reported accepted shares on the selected public pool after this fix; see [the field report](benchmarks/first-device.md). This is a user report, not broad independent certification. See [incident notes](NONCE-FORMAT-FIX.md). Previous builds were reported working by the tester at roughly 290–300 kH/s; that is an informal device report, not an independent benchmark or broad compatibility certification. The new UI needs device testing. A generic Android 10 connection failure was not established to be OS-specific and should be diagnosed from the detailed error.
+Every submitted nonce is exactly eight lowercase hexadecimal characters with leading zeroes preserved, which strict pools require. Host tests cover SHA-256 vectors and the genesis block, target arithmetic, merkle/header construction, 20,480 optimised-versus-reference header comparisons, nonce formatting, CPU discovery, worker partitioning, duplicate checking, difficulty negotiation and an independent mock pool that validates submitted shares. Real-device results are in [the field report](benchmarks/first-device.md); they are maintainer reports from a single phone, not independent certification.
 
 Monitor battery health and temperature. Stop if the battery swells or the device overheats. No profitability claims; no guarantee of a block, payout, pool availability, background uptime or store acceptance.
 
