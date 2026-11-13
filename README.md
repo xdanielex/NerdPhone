@@ -140,6 +140,8 @@ This repository and its CI **do not distribute APK/AAB artefacts**.
 5. Tap **START MINING** and watch **ACCEPTED**, not the hash-rate animation.
 6. For screen-off use, allow unrestricted battery/background operation in Android settings, and test on your own device before leaving it unattended.
 
+**Tested on your phone?** [Open a device report](../../issues/new?template=nerdphone-device-report.yml) with your model, Android version, worker count and the hash rate you observed — it takes thirty seconds and helps build the compatibility list.
+
 `pool.nerdminers.org` is **not** `pool.nerdminer.io`; the two endpoints can assign different difficulties. The pool decides the assigned difficulty—requesting `0.001` does not force it.
 
 ## How to interpret the numbers
