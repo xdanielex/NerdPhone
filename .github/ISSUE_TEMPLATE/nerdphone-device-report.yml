@@ -1,0 +1,102 @@
+name: Device report
+description: Report that NerdPhone runs on your phone, with the hash rate you observed
+title: "[Device] Phone model — hash rate"
+labels: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for testing NerdPhone. Four fields are enough to make the report useful —
+        everything else is optional.
+
+        **Do not paste your Bitcoin address, a seed phrase or a private key.**
+        A worker name is fine. Redact addresses from screenshots before uploading.
+
+  - type: input
+    id: model
+    attributes:
+      label: Phone model
+      description: The exact model name, as shown in Settings → About phone
+      placeholder: UMIDIGI Power 3
+    validations:
+      required: true
+
+  - type: input
+    id: android
+    attributes:
+      label: Android version
+      placeholder: Android 10
+    validations:
+      required: true
+
+  - type: input
+    id: app_version
+    attributes:
+      label: NerdPhone version
+      description: Shown at the bottom of the app screen, e.g. 0.2.4-midstate-test
+      placeholder: 0.2.4-midstate-test
+    validations:
+      required: true
+
+  - type: input
+    id: workers
+    attributes:
+      label: Mining workers
+      description: How many workers you selected (and how many CPUs the app detected)
+      placeholder: 8 workers out of 8 available
+    validations:
+      required: true
+
+  - type: input
+    id: hashrate_local
+    attributes:
+      label: Hash rate shown in the app
+      description: The value under HASH RATE while mining
+      placeholder: "4010.16 kH/s"
+    validations:
+      required: true
+
+  - type: input
+    id: hashrate_pool
+    attributes:
+      label: Hash rate reported by the pool
+      description: From your pool dashboard, e.g. hashrate1hr — leave empty if you use a pool without statistics
+      placeholder: 4.07 MH/s (1 hour window)
+
+  - type: dropdown
+    id: screen
+    attributes:
+      label: Screen state during the test
+      options:
+        - Screen on
+        - Screen off
+        - Mixed
+    validations:
+      required: true
+
+  - type: input
+    id: duration
+    attributes:
+      label: How long did it run?
+      placeholder: 3 hours
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: Anything else
+      description: Accepted/rejected share counts, battery behaviour, heat, whether it survived screen-off, errors, ROM or kernel oddities
+      placeholder: |
+        56,952 accepted / 47 rejected (Stale) after ~15 hours.
+        Phone stayed cold, charger connected overnight.
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: confirm
+    attributes:
+      label: Before submitting
+      options:
+        - label: I did not include a Bitcoin address, seed phrase or private key
+          required: true
+        - label: I understand this is a single-device report, not a benchmark
+          required: false
