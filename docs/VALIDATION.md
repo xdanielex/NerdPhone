@@ -19,9 +19,9 @@ Distribution certificate SHA-256: `43bb0e9fd881b7bbe8f0739a03774e51319a94992e72e
 The same phone was then left running continuously for several days, still with eight workers and the screen off. Figures below are read from the pool's own worker counters, not from the app.
 
 - Cumulative shares reported by the pool: **262,371** at the time of writing, which at difficulty 0.001 is **≈1.1 × 10¹² hashes**.
-- Share rate over the full run: **≈1.00 share/s**, i.e. **≈4.26 MH/s** — consistent with the pool's 1-hour estimate (4.02–4.10 MH/s) and with the app's own reading.
+- Share rate over the full run: **≈1.00 share/s**. At difficulty 0.001 one share per second is 0.001 × 2³² hashes, i.e. **4.295 MH/s** — consistent with the pool's 1-hour estimate (4.02–4.10 MH/s) and with the app's own reading.
 - Reject rate in the longest measured window: **106 rejected of 150,281 submitted (0.066%)**, all reported as `Stale`. The rate is quoted with its window on purpose: over longer periods a single unstable Wi-Fi evening moves it.
-- Best share observed: **difficulty 94.03**. At the pool's difficulty this is a legitimate but unremarkable draw: after 262,371 shares the expected count of shares at or above 94.03 is **2.48**, and one was observed.
+- Best share observed: **difficulty 94.03**. At the pool's difficulty this is a legitimate but unremarkable draw: after 262,371 shares the expected count of shares at or above 94.03 is **2.8**, and one was observed. (The expected count rises with the share count, so it is quoted against the same number of shares.)
 - The phone stayed at ~4 MH/s for days without thermal shutdown, CPU caps or pause logic. No cooling accessory was used.
 
 ## Protocol compatibility on a standard pool
