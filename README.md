@@ -137,13 +137,14 @@ The app counts hashes computed on the device; the pool estimates work from the s
 
 Both are reported here so neither is mistaken for the other. A local counter alone does not prove valid submission, and a pool estimate alone does not prove the local loop is efficient.
 
-### About 70 NerdMiner-class devices, in hash rate only
+### About 170 NerdMiner-class devices, in hash rate only
 
 ```text
-4,000 kH/s ÷ 57 kH/s ≈ 70
+4,140 kH/s ÷ 57 kH/s ≈ 73     (software path, 0.2.4)
+9,600 kH/s ÷ 57 kH/s ≈ 168    (hardware path, 0.3.2)
 ```
 
-The **57 kH/s** figure is the reference rate supplied by the tester; not every NerdMiner model or firmware version reaches it. Against a seller-declared **307 kH/s** device the same throughput would be roughly **13 devices**, assuming that advertised rate is actually achieved.
+The **57 kH/s** figure is the reference rate supplied by the tester; not every NerdMiner model or firmware version reaches it. Against a seller-declared **307 kH/s** device the same throughput would be roughly **31 devices** on the hardware path or **13** on the software path, assuming that advertised rate is actually achieved.
 
 This is **arithmetic on hash rate**, nothing more: it is not a side-by-side hardware test and it says nothing about energy use, purchase cost or reliability. A phone running NerdPhone was also **cold to the touch with no fan or cooling accessory**, whereas some small miners are sold with fans that add their own consumption—but that too is an observation from one device, not a measured efficiency comparison. ASIC products with similar names belong to a different performance class entirely.
 
