@@ -144,7 +144,32 @@ TCP only: **no TLS or Stratum V2**. The native code reports connection phase, nu
 
 Bounded outgoing queue and pending-share limits protect memory; these are not CPU caps. Hash counters are published in batches of 4,096, so short UI intervals can be quantized. Current counters are session-local; the last observed block candidate is persisted by the Android service. Candidate detection does not query the blockchain to confirm a block.
 
-The portable SHA implementation now includes HeaderHasher: a cached first-block midstate and two fixed-size compression blocks per nonce for 80-byte headers. It is rebuilt whenever the header/extranonce2 changes. Generic sha/sha2 remain unchanged for merkle/coinbase work and correctness comparisons. ARM SHA intrinsics are not implemented. Performance is device-dependent; the optimisation changes nothing in networking, targets, worker partitioning or the screen-off service.
+The portable SHA implementation now includes HeaderHasher: a cached first-block midstate and two fixed-size compression blocks per nonce for 80-byte headers. It is rebuilt whenever the header/extranonce2 changes. Generic sha/sha2 remain unchanged for merkle/coinbase work and correctness comparisons. Performance is device-dependent; the optimisation changes nothing in networking, targets, worker partitioning or the screen-off service.
+
+## ARMv8 SHA-256 hardware path
+
+`app/src/main/cpp/sha256_armv8.cpp` is the only translation unit compiled with
+`-march=armv8-a+crypto`, and only for `arm64-v8a` (see `CMakeLists.txt`, which applies the
+flag per file and defines `NERDPHONE_HAVE_SHA2_HW`). Nothing outside that file can emit
+crypto instructions, so a wrong flag cannot turn into a SIGILL on a 32-bit or x86 device.
+
+Design decisions that matter if you touch this code:
+
+- **Message schedule stays scalar C.** `SHA256SU0`/`SHA256SU1` operate on concatenated
+  register pairs; their semantics are easy to get subtly wrong and impossible to verify
+  without running them. Only the 64 rounds use hardware.
+- **State layout is architectural:** `Qd = {a,b,c,d}`, `Qn = {e,f,g,h}`. `SHA256H` writes
+  the new `{a,b,c,d}`, `SHA256H2` writes the new `{e,f,g,h}`, and both must read the state
+  as it was before the pair, hence the saved copy. An ABEF/CDGH packing (the layout used
+  inside OpenSSL's assembly macros) looks plausible and produces wrong digests with these
+  intrinsics — that mistake shipped once, was caught by the self-test, and was disproved
+  off-device with the recipe in [VALIDATION](VALIDATION.md).
+- **Three states, not two.** `hw_available()` answers "does this CPU have the unit";
+  `hardwareVerified()` answers "does our code reproduce the reference". The app shows
+  `ACTIVE`, `N/A` or `BROKEN` separately, because "off" alone cannot tell a missing CPU
+  feature from a bug in our own code.
+- **No per-hash branch.** The benchmark instantiates the loop twice (`benchmarkThreads<bool>`),
+  so comparing hardware against software does not pay a branch inside the hot loop.
 
 ## Validation and limitations
 

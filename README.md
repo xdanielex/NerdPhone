@@ -19,32 +19,54 @@ NerdPhone is a native **C++ SHA-256d miner** with **Stratum V1 networking** and 
 - **Screen-off operation:** foreground service, persistent notification and partial wake lock, subject to Android and OEM background restrictions.
 - **Block candidate detection:** the full header hash is compared against the network target, the alert is shown and the share is submitted. This is not a Bitcoin block confirmation.
 - **No application-level CPU cap:** the selected workers hash continuously while valid work exists. Android thermal and power protection still applies.
+- **ARMv8 SHA-256 instructions:** on 64-bit phones whose CPU exposes the SHA-2 unit, the 64 compression rounds run on `SHA256H` / `SHA256H2` instead of scalar code. The fast path is switched on only after it has reproduced the reference digest on 1,030 test hashes, and it switches itself off for the whole session at the first mismatch. It exists only in `arm64-v8a`; the 32-bit and x86 builds never emit those instructions.
 - **Midstate optimisation** in the hashing hot path: the first SHA-256 compression state for each 80-byte header is computed once per job and reused for every nonce, so each nonce costs two compressions instead of three.
 
 ## Screenshots
 
-Real captures from the UMIDIGI Power 3 used for the field test, mining with eight workers. The Bitcoin address field has been redacted.
+Real captures from the **0.3.2** build, mining with eight workers and the hardware path active.
+The Bitcoin address field has been redacted. Captures come from two sessions on the same device:
+the morning session of 18 November (dashboard, workers, shares, connection, thermal) and the
+overnight pool chart that contains both the software and the hardware path.
 
 <p>
-  <img src="docs/images/01-dashboard.png" alt="NerdPhone dashboard showing 4010.16 kH/s and eight mining workers" width="240">
-  <img src="docs/images/02-cpu-threads.png" alt="Eight active miners with individual hash rates" width="240">
+  <img src="docs/images/01-dashboard.png" alt="NerdPhone 0.3.2 dashboard: 9309.09 kH/s, Mining, eight configured workers, SHA-256 hardware path ACTIVE" width="240">
+  <img src="docs/images/02-cpu-threads.png" alt="Eight active miners between 1091 and 1194 kH/s each, plus the hardware-path-off comparison button" width="240">
 </p>
 
 <p>
-  <img src="docs/images/03-shares-jobs.png" alt="56952 accepted shares, 47 rejected, Stratum job diagnostics" width="240">
-  <img src="docs/images/04-pool-config.png" alt="Pool configuration with TCP port 3333 and redacted BTC address" width="240">
+  <img src="docs/images/03-shares-jobs.png" alt="22148 submitted, 22127 accepted, 21 rejected, and 333 Stratum jobs received" width="240">
+  <img src="docs/images/04-pool-config.png" alt="Pool configuration: pool.nerdminers.org on TCP port 3333, redacted BTC address, difficulty 0.001" width="240">
 </p>
 
-- **Dashboard:** 4,010 kH/s local, status *Mining*.
-- **Workers:** eight miners, from 462 to 528 kH/s each, plus the dedicated pool thread.
-- **Shares:** 56,952 accepted of 56,999 submitted; the 47 rejections were `Stale`.
-- **Connection:** `pool.nerdminers.org` on TCP 3333, difficulty 0.001, address redacted.
+<p>
+  <img src="docs/images/05-thermal.png" alt="THERMAL card: battery 27.2 degrees, SoC zone not exposed, peak 28.0 degrees over 307 samples, Android thermal status NONE" width="240">
+</p>
 
-**Pool side, from the same session:** one worker, ~4 MH/s in the pool's own estimate, best share difficulty 74.563. Each major grid interval is three hours.
+- **Dashboard:** 9,309.09 kH/s from the app's own counter, status *Mining*, eight cores configured,
+  `Selected miners: 8 + 1 dedicated pool thread`, `SHA-256 hardware path: ACTIVE (self-test passed)`.
+- **Workers:** eight miners from 1,091 to 1,194 kH/s each, about **9,357 kH/s** in total. The two
+  buttons above the list are the three-second offline test and **the same test with the hardware
+  path OFF**, which is the comparison this release was measured with.
+- **Shares:** 22,148 submitted, 22,127 accepted, **21 rejected (0.095%)**; 333 Stratum jobs
+  received, assigned and started; job difficulty 0.001.
+- **Connection:** `pool.nerdminers.org` on TCP port 3333, pool password `x`, address redacted.
+- **Thermal:** battery **27.2 °C**, peak **28.0 °C** over 307 samples, Android thermal status
+  `NONE`, `Queue drops: 0`. This is a different session from the measurement table below, taken
+  in a warmer room: the peak there is 25.9 °C. Both are real; they are not the same hour.
+- **The SoC thermal zone is not readable on this device** and the card says so, instead of
+  showing a number it does not have.
 
-<img src="docs/images/pool-stats.png" alt="Pool dashboard showing about 4 MH/s and best difficulty 74.563" width="900">
+**Pool side, both paths in one chart:** the pool's own estimate for this worker over roughly
+24 hours. It sits steady near **4 MH/s** through the day, then steps up to **8-9 MH/s** in the
+evening of 17 November, when the hardware path was enabled. The brief drop near 11:00 is the
+miner being stopped, not a fault. Major grid intervals are three hours.
 
-> Pool-side estimates depend on share arrivals and smoothing windows. They are not a local benchmark.
+<img src="docs/images/pool-stats.png" alt="Pool hashrate chart over 24 hours: flat near 4 MH/s, then a step up to 8-9 MH/s in the evening" width="640">
+
+> Pool-side estimates depend on share arrivals and smoothing windows. They are not a local
+> benchmark — but this one is worth reading, because the step is visible and it was measured by
+> somebody else's software.
 
 ## Measured on real hardware
 
@@ -52,7 +74,7 @@ Everything below was observed on one **repurposed UMIDIGI Power 3 running Androi
 
 | Observation | Result |
 |---|---|
-| Duration of the extended run | About **12 hours** screen off after installing the current build, with each pool graph division equal to **3 hours** |
+| Duration of the extended run | About **12 hours** screen off on the software-path build (0.2.4), with each pool graph division equal to **3 hours** |
 | Pool-side hash rate over that run | Repeatedly near **4 MH/s** (`hashrate1hr` typically 3.9–4.0 MH/s in the supplied snapshots) |
 | Shares | **56,952 accepted** of **56,999 submitted** in the captured session; counters carried over from 186 at the first snapshot, an interval-equivalent average near **4.0 MH/s** assuming one difficulty-0.001 share per increment |
 | Rejections | **47**, all reported as `Stale` — about **0.08%**; no other rejection pattern observed |
@@ -61,6 +83,48 @@ Everything below was observed on one **repurposed UMIDIGI Power 3 running Androi
 | Internal temperature, power at the wall | **Not measured** |
 
 The initial gap in the pool graph corresponds to a deliberate stop to install the update, not to a miner failure.
+
+### Hardware SHA-256, measured on two phones
+
+NerdPhone uses the ARMv8 SHA-2 instructions when the CPU exposes them. Both phones below ran eight workers:
+
+| Device | Software path | Hardware path | Ratio |
+|---|---|---|---|
+| UMIDIGI Power 3 (Cortex-A53) | **4.14 MH/s** | **~9.4 MH/s** | **2.3x** |
+| Oukitel T606 (Cortex-A75/A55) | not measured at 8 workers | 9 MH/s (app) | — |
+
+The Power 3 row is the strongest evidence in this README, because both numbers are calculated from the **pool's own share counters, on the same worker and the same phone** — the app is not involved at all.
+
+- **Before:** 9,780 shares in 10,140 s (17:32:17 -> 20:21:17 CET), i.e. 0.9645 shares/s.
+- **After:** three windows, all agreeing:
+
+  | Window | Duration | Shares | Rate | Ratio |
+  |---|---|---|---|---|
+  | 20:21:17 -> 20:32:20 | 663 s | 1,504 | 9.74 MH/s | 2.35x |
+  | 20:37:19 -> 21:23:20 (after an app restart) | 2,761 s | 6,228 | 9.69 MH/s | 2.34x |
+  | 20:21:17 -> 21:23:20 (gap included, conservative) | 3,723 s | 8,289 | 9.56 MH/s | 2.31x |
+
+At difficulty 0.001, one share is 2^32 x 0.001 hashes. The Poisson uncertainty on the longest window is 1.1%, and at the old rate that window would have produced 3,590 shares instead of 8,289 — **78 standard deviations**. The improvement is not measurement noise.
+
+**`hashrate1hr` is not a one-hour boxcar average.** If it were, then one hour after the change it should already read ~9.1 MH/s; at 21:23 it read 6.73. Its behaviour matches an exponential average with a time constant of roughly 90 minutes. That makes it useless for checking a prediction to two decimals, and no such check is claimed here. What it does show is the shape of the curve, and that shape is a monotonic rise with no plateau:
+
+```
+3.77  3.91  4.56  4.73  5.20  5.59  6.06  6.73     (one reading every few minutes)
+```
+
+A phone that was thermally throttling would plateau, and `hashrate1m` would sit systematically *below* `hashrate5m`. At 21:23 the pool reported `hashrate1m` 9.36 and `hashrate5m` 8.76, i.e. the fast window above the slow one and both above the hour.
+
+`hashrate1d` needs a full day to move; at the time of writing it still reads 3.79.
+
+Correctness is not taken on trust in either direction. The app compares 1,030 hardware hashes against the reference implementation every time it starts and falls back to the scalar path if a single one differs. On the Oukitel, **400 of 400 shares at difficulty 0.001 were accepted by the pool** — about 1.7 billion hashes checked by an independent party that would have rejected any wrong digest.
+
+### Heat, with the hardware path on
+
+Eight workers on the Power 3 with the ARMv8 path active, in a closed room at 21 °C: the
+battery settled at **22.7 °C**, peaked at **25.9 °C**, and the cooling system is a plastic
+case. The hash rate did not drift over the run — the fastest pool window stayed above the
+five-minute window, which stayed above the hour. Details and caveats in
+[validation](../docs/VALIDATION.md).
 
 ### The two hash-rate numbers, and why they differ
 
@@ -140,8 +204,6 @@ This repository and its CI **do not distribute APK/AAB artefacts**.
 5. Tap **START MINING** and watch **ACCEPTED**, not the hash-rate animation.
 6. For screen-off use, allow unrestricted battery/background operation in Android settings, and test on your own device before leaving it unattended.
 
-**Tested on your phone?** [Open a device report](https://github.com/xdanielex/NerdPhone/issues/new?template=nerdphone-device-report.yml) with your model, Android version, worker count and the hash rate you observed — it takes thirty seconds and helps build the compatibility list.
-
 `pool.nerdminers.org` is **not** `pool.nerdminer.io`; the two endpoints can assign different difficulties. The pool decides the assigned difficulty—requesting `0.001` does not force it.
 
 ## How to interpret the numbers
@@ -202,6 +264,7 @@ GitHub Actions runs the offline tests and compiles a debug APK only to verify th
 - [Technical guide](docs/TECHNICAL.md)
 - [Build instructions](docs/BUILDING.md)
 - [Field report](docs/benchmarks/first-device.md)
+- [Screenshot guide](docs/SCREENSHOTS.md)
 - [Roadmap](docs/ROADMAP.md)
 - [Contributing](CONTRIBUTING.md) · [Security and safety](SECURITY.md)
 

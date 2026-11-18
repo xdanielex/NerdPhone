@@ -39,21 +39,30 @@ static J cpuInfo(){
  return J{{"configured",std::max(1L,configured)},{"online",std::max(1L,online)},{"available",allowed},{"allowedCpuIds",ids},{"affinityDetected",affinityOk}};
 }
 struct WorkerStats {std::atomic<uint64_t> hashes{0};uint64_t jobHashes=0,generation=0,jobs=0;};
-static std::string benchmark(int requested){
+// The inner loop is instantiated twice so that the software reference path can be
+// measured on the same device without any per-hash branch in the mining loop.
+template<bool HW>
+static void benchmarkThreads(int count,std::atomic<bool>&go,std::atomic<bool>&cancel,Clock::time_point&end,
+                             std::vector<std::thread>&threads,std::vector<uint64_t>&attempts,std::vector<uint64_t>&checksums){
+ for(int id=0;id<count;id++)threads.emplace_back([&,id]{
+   while(!go.load(std::memory_order_acquire)&&!cancel)std::this_thread::yield();if(cancel)return;
+   Bytes h(80,0);h[0]=1;HeaderHasher hasher(h);uint64_t n=id,checksum=0,total=0;
+   do{Hash digest;if constexpr(HW)digest=hasher.hashHw(uint32_t(n));else digest=hasher.hashGeneric(uint32_t(n));
+      checksum+=digest[0];n+=count;++total;}while((total%256)!=0||Clock::now()<end);
+   attempts[id]=total;checksums[id]=checksum;
+ });
+}
+static std::string benchmark(int requested,bool useHw=true){
  auto info=cpuInfo();int count=std::clamp(requested,1,info["available"].get<int>());
  std::vector<uint64_t> attempts(count),checksums(count);std::vector<std::thread> threads;
  std::atomic<bool> go{false},cancel{false};Clock::time_point begin,end;
- try{for(int id=0;id<count;id++)threads.emplace_back([&,id]{
-   while(!go.load(std::memory_order_acquire)&&!cancel)std::this_thread::yield();if(cancel)return;
-   Bytes h(80,0);h[0]=1;HeaderHasher hasher(h);uint64_t n=id,checksum=0,total=0;
-   do{auto digest=hasher.hash(uint32_t(n));checksum+=digest[0];n+=count;++total;}while((total%256)!=0||Clock::now()<end);
-   attempts[id]=total;checksums[id]=checksum;
-  });
+ try{if(useHw)benchmarkThreads<true>(count,go,cancel,end,threads,attempts,checksums);
+     else benchmarkThreads<false>(count,go,cancel,end,threads,attempts,checksums);
  }catch(...){cancel=true;for(auto&t:threads)if(t.joinable())t.join();throw;}
  begin=Clock::now();end=begin+std::chrono::seconds(3);go.store(true,std::memory_order_release);
  for(auto&t:threads)t.join();double seconds=std::chrono::duration<double>(Clock::now()-begin).count();
  J workers=J::array();uint64_t sum=0;for(int i=0;i<count;i++){sum+=attempts[i];workers.push_back(J{{"id",i+1},{"hashes",attempts[i]},{"hashrate",attempts[i]/seconds},{"checksum",checksums[i]}});}
- return J{{"threads",count},{"seconds",seconds},{"hashes",sum},{"hashrate",sum/seconds},{"workers",workers},{"cpuInfo",info},{"offline",true}}.dump();
+ return J{{"threads",count},{"seconds",seconds},{"hashes",sum},{"hashrate",sum/seconds},{"workers",workers},{"cpuInfo",info},{"offline",true},{"sha2hw",useHw&&HeaderHasher::hardwareAccelerated()},{"sha2status",HeaderHasher::hardwareStatus()},{"hardwareUsed",useHw&&HeaderHasher::hardwareAccelerated()}}.dump();
 }
 class Engine {
  std::atomic<bool> running{false}; std::thread network;std::vector<std::thread> miners;
@@ -169,5 +178,8 @@ extern "C" JNIEXPORT void JNICALL Java_it_nerdphone_Native_start(JNIEnv*e,jobjec
 extern "C" JNIEXPORT jstring JNICALL Java_it_nerdphone_Native_cpuInfo(JNIEnv*e,jobject){try{return e->NewStringUTF(cpuInfo().dump().c_str());}catch(const std::exception&x){e->ThrowNew(e->FindClass("java/lang/IllegalStateException"),x.what());return nullptr;}}
 extern "C" JNIEXPORT jstring JNICALL Java_it_nerdphone_Native_benchmark(JNIEnv*e,jobject,jint count){bool owns=false;try{{std::lock_guard<std::mutex>l(commandMutex);if(benchmarkBusy||J::parse(engine.snapshot())["running"].get<bool>())throw std::runtime_error("Stop mining and wait for any CPU test to finish");benchmarkBusy=true;owns=true;}auto result=benchmark(count);benchmarkBusy=false;return e->NewStringUTF(result.c_str());}catch(const std::exception&x){if(owns)benchmarkBusy=false;e->ThrowNew(e->FindClass("java/lang/IllegalStateException"),x.what());return nullptr;}}
 extern "C" JNIEXPORT void JNICALL Java_it_nerdphone_Native_stop(JNIEnv*,jobject){engine.stop();}
+extern "C" JNIEXPORT jstring JNICALL Java_it_nerdphone_Native_sha2status(JNIEnv*e,jobject){return e->NewStringUTF(HeaderHasher::hardwareStatus());}
+extern "C" JNIEXPORT jstring JNICALL Java_it_nerdphone_Native_benchmarkGeneric(JNIEnv*e,jobject,jint count){bool owns=false;try{{std::lock_guard<std::mutex>l(commandMutex);if(benchmarkBusy||J::parse(engine.snapshot())["running"].get<bool>())throw std::runtime_error("Stop mining and wait for any CPU test to finish");benchmarkBusy=true;owns=true;}auto result=benchmark(count,false);benchmarkBusy=false;return e->NewStringUTF(result.c_str());}catch(const std::exception&x){if(owns)benchmarkBusy=false;e->ThrowNew(e->FindClass("java/lang/IllegalStateException"),x.what());return nullptr;}}
+extern "C" JNIEXPORT jboolean JNICALL Java_it_nerdphone_Native_sha2hw(JNIEnv*,jobject){return HeaderHasher::hardwareAccelerated()?JNI_TRUE:JNI_FALSE;}
 extern "C" JNIEXPORT jstring JNICALL Java_it_nerdphone_Native_snapshot(JNIEnv*e,jobject){return e->NewStringUTF(engine.snapshot().c_str());}
 #endif

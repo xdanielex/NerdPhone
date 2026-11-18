@@ -1,9 +1,12 @@
 package it.nerdphone
 import android.Manifest
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.os.Build
+import android.os.BatteryManager
 import android.os.Bundle
+import android.os.PowerManager
 import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -47,6 +50,19 @@ class MainActivity:ComponentActivity(){
   var testResult by remember {mutableStateOf("")}
   var workerRates by remember {mutableStateOf(listOf<Pair<Int,Double>>())}
   val scope=rememberCoroutineScope()
+  // Shown on screen so the running build and the SHA-2 path are always identifiable.
+  val version=remember {try{packageManager.getPackageInfo(packageName,0).versionName ?: "?"}catch(t:Throwable){"?"}}
+  val sha2status=remember {try{Native.sha2status()}catch(t:Throwable){"unknown"}}
+  // Temperature: battery is always readable, SoC zones only where the kernel exposes them.
+  var battTemp by remember { mutableDoubleStateOf(Double.NaN) }
+  var zoneTemp by remember { mutableDoubleStateOf(Double.NaN) }
+  var maxTemp by remember { mutableDoubleStateOf(Double.NaN) }
+  var thermalStatus by remember { mutableIntStateOf(-1) }
+  var thermalSamples by remember { mutableIntStateOf(0) }
+  LaunchedEffect(Unit){while(true){
+   Thermal.sample(this@MainActivity,false)
+   battTemp=Thermal.battery;zoneTemp=Thermal.zone;maxTemp=Thermal.peak;thermalStatus=Thermal.status;thermalSamples=Thermal.samples
+   delay(5000)}}
 
   LaunchedEffect(Unit){var last=stats.optLong("hashes");var time=android.os.SystemClock.elapsedRealtime();var lastWorkers=mapOf<Int,Long>();while(true){delay(1000);val s=JSONObject(Native.snapshot());val now=android.os.SystemClock.elapsedRealtime();val dt=(now-time).coerceAtLeast(1);val count=s.optLong("hashes");rate=if(s.optBoolean("running")&&count>=last)(count-last)*1000.0/dt else 0.0
    val arr=s.optJSONArray("workers");val next=mutableMapOf<Int,Long>();val rates=mutableListOf<Pair<Int,Double>>()
@@ -55,7 +71,7 @@ class MainActivity:ComponentActivity(){
   val active=stats.optBoolean("running")
   Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).verticalScroll(rememberScrollState()).padding(24.dp),verticalArrangement=Arrangement.spacedBy(14.dp)) {
    Spacer(Modifier.height(16.dp))
-   Text("NERDPHONE",color=MaterialTheme.colorScheme.primary,fontSize=14.sp,fontWeight=FontWeight.Bold)
+   Text("NERDPHONE $version",color=MaterialTheme.colorScheme.primary,fontSize=14.sp,fontWeight=FontWeight.Bold)
    Text("Bitcoin. One hash at a time.",fontSize=28.sp,fontWeight=FontWeight.Bold,color=Color.White)
    Text("SHA-256d / SOLO / MULTI-THREADED CPU MINER",fontSize=11.sp,color=Color.Gray)
    Card(Modifier.fillMaxWidth()){Column(Modifier.padding(20.dp)){
@@ -68,20 +84,24 @@ class MainActivity:ComponentActivity(){
     Text("Available to app: $available · Online: ${cpus.optInt("online")} · Configured: ${cpus.optInt("configured")}",color=Color.White,fontSize=13.sp)
     Text("Allowed logical CPU IDs: ${cpus.optJSONArray("allowedCpuIds") ?: "unavailable"}",color=Color.Gray,fontSize=11.sp)
     Text("Selected miners: $selectedThreads + 1 dedicated pool thread",color=Color.White,fontSize=13.sp)
+    Text("SHA-256 hardware path: "+sha2Label(sha2status),color=if(sha2status=="active") MaterialTheme.colorScheme.primary else Color.Gray,fontSize=13.sp,fontWeight=FontWeight.Bold)
     Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){
      OutlinedButton(onClick={selectedThreads--},enabled=!active&&!testing&&selectedThreads>1){Text("−")}
      OutlinedButton(onClick={selectedThreads++},enabled=!active&&!testing&&selectedThreads<available){Text("+")}
      OutlinedButton(onClick={selectedThreads=available},enabled=!active&&!testing){Text("Use all")}
     }
     OutlinedButton(onClick={cpus=JSONObject(Native.cpuInfo());selectedThreads=selectedThreads.coerceIn(1,cpus.optInt("available",1).coerceAtLeast(1));testResult=""},enabled=!active&&!testing){Text("Detect CPUs again")}
-    Button(onClick={scope.launch {
+    fun startTest(useHw:Boolean){scope.launch {
      testing=true;error=""
-     try{val output=withContext(Dispatchers.Default){Native.benchmark(selectedThreads)};val b=JSONObject(output)
+     try{val output=withContext(Dispatchers.Default){if(useHw)Native.benchmark(selectedThreads) else Native.benchmarkGeneric(selectedThreads)};val b=JSONObject(output)
       val lines=mutableListOf("${b.optInt("threads")} miners · ${"%.2f".format(java.util.Locale.US,b.optDouble("seconds"))} s · ${"%.2f".format(java.util.Locale.US,b.optDouble("hashrate")/1000)} kH/s total")
+      lines.add(if(useHw) "SHA-256 hardware: "+sha2Label(b.optString("sha2status","absent")) else "SHA-256 hardware: disabled for this test (software reference path)")
       val ws=b.getJSONArray("workers");for(i in 0 until ws.length()){val w=ws.getJSONObject(i);lines.add("Miner ${w.optInt("id")}: ${"%.2f".format(java.util.Locale.US,w.optDouble("hashrate")/1000)} kH/s")}
       testResult=lines.joinToString("\n")
      }catch(e:Exception){error=e.message ?: "CPU test failed"}finally{testing=false}
-    }},enabled=!active&&!testing){Text(if(testing)"Testing CPUs…" else "Run 3-second offline test")}
+    }}
+    Button(onClick={startTest(true)},enabled=!active&&!testing){Text(if(testing)"Testing CPUs…" else "Run 3-second offline test")}
+    OutlinedButton(onClick={startTest(false)},enabled=!active&&!testing){Text("Run the same test with the hardware path OFF")}
     if(testResult.isNotBlank())Text(testResult,color=Color.White,fontSize=12.sp)
     if(active){Text("Active miners: ${stats.optInt("miningThreads",1)}",color=Color.White,fontSize=13.sp);workerRates.forEach{(id,h)->Text("Miner $id · ${"%.2f".format(java.util.Locale.US,h/1000)} kH/s",color=Color.Gray,fontSize=12.sp)}}
     Text("CPU detection runs on this device. Threads are scheduled by Android, not pinned to physical cores. The short offline test submits no shares and does not predict sustained thermal performance. Keep this screen open during the test.",color=Color.Gray,fontSize=11.sp)
@@ -109,6 +129,14 @@ class MainActivity:ComponentActivity(){
    Text("Unknown outcome: ${stats.optLong("unknown")} · Queue drops: ${stats.optLong("dropped")}",color=Color.Gray,fontSize=12.sp)
    val candidate=stats.optString("lastBlock").ifBlank {getSharedPreferences("events",MODE_PRIVATE).getString("candidate","").orEmpty()}
    if(candidate.isNotBlank()) Card {Column(Modifier.padding(16.dp)){Text("⚠ BLOCK CANDIDATE",color=MaterialTheme.colorScheme.primary);Text(candidate,color=Color.White);Text("Network target met locally. Pool confirmation still needs verification.",color=Color.Gray)}}
+   Card(Modifier.fillMaxWidth()){Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(6.dp)){
+    Text("THERMAL",color=MaterialTheme.colorScheme.primary,fontWeight=FontWeight.Bold)
+    Text("Battery: "+(if(battTemp.isNaN()) "unavailable" else "%.1f °C".format(java.util.Locale.US,battTemp)),color=Color.White,fontSize=13.sp)
+    Text("SoC thermal zone: "+(if(zoneTemp.isNaN()) "not exposed on this device" else "%.1f °C".format(java.util.Locale.US,zoneTemp)),color=Color.White,fontSize=13.sp)
+    if(!maxTemp.isNaN())Text("Peak since mining started: %.1f °C (%d samples)".format(java.util.Locale.US,maxTemp,thermalSamples),color=MaterialTheme.colorScheme.primary,fontSize=13.sp)
+    Text("Android thermal status: "+thermalLabel(thermalStatus),color=Color.White,fontSize=13.sp)
+    Text("Sampled every 30 seconds by the mining service, so the peak is recorded with the screen off too. Heat builds slowly: a 3-second test cannot show throttling. Leave the miner running and watch whether the hash rate falls while these numbers rise.",color=Color.Gray,fontSize=11.sp)
+   }}
    Text("STRATUM V1 CONNECTION",color=Color.Gray,fontSize=12.sp)
    OutlinedTextField(host,{host=it},label={Text("Pool host")},singleLine=true,enabled=!active,modifier=Modifier.fillMaxWidth())
    OutlinedTextField(port,{port=it},label={Text("TCP port")},singleLine=true,enabled=!active,modifier=Modifier.fillMaxWidth())
@@ -128,3 +156,24 @@ class MainActivity:ComponentActivity(){
  }
  @Composable private fun Stat(label:String,value:String,modifier:Modifier){Card(modifier){Column(Modifier.padding(16.dp)){Text(label,color=Color.Gray,fontSize=10.sp);Text(value,color=Color.White,fontSize=22.sp,fontWeight=FontWeight.Bold)}}}
 }
+
+// Three distinct states, because "off" alone cannot tell a missing CPU feature
+// from a broken implementation.
+private fun sha2Label(status:String):String=when(status){
+ "active"->"ACTIVE (self-test passed)"
+ "failed"->"BROKEN - self-test failed, hardware hash differs from reference"
+ else->"N/A - this CPU has no SHA-2 unit"
+}
+
+// 0..6 are the Android PowerManager thermal status constants (API 29+).
+private fun thermalLabel(status:Int):String=when(status){
+ 0->"NONE"
+ 1->"LIGHT"
+ 2->"MODERATE"
+ 3->"SEVERE"
+ 4->"CRITICAL"
+ 5->"EMERGENCY"
+ 6->"SHUTDOWN"
+ else->"not available (Android 9 or older)"
+}
+

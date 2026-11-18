@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <cstdint>
 #include <cmath>
+#include "sha256_hw.hpp"
 using Bytes=std::vector<uint8_t>;
 using Hash=std::array<uint8_t,32>;
 inline Bytes unhex(const std::string&s){if(s.size()%2)throw std::runtime_error("Odd-length hex"); Bytes b; auto n=[](char c)->int{if(c>='0'&&c<='9')return c-'0';if(c>='a'&&c<='f')return c-'a'+10;if(c>='A'&&c<='F')return c-'A'+10;throw std::runtime_error("Invalid hex");};for(size_t i=0;i<s.size();i+=2)b.push_back((n(s[i])<<4)|n(s[i+1]));return b;}
@@ -42,7 +43,8 @@ class HeaderHasher {
   for(int i=0;i<3;i++)tail[i]=word(header,64+4*i);
   tail[4]=0x80000000;tail[15]=640;
  }
- Hash hash(uint32_t nonce) const {
+ // Portable reference path: unchanged arithmetic.
+ Hash hashGeneric(uint32_t nonce) const {
   auto block=tail;
   // Header nonce is little endian; SHA message words are big endian.
   block[3]=((nonce&0xff)<<24)|((nonce&0xff00)<<8)|((nonce>>8)&0xff00)|(nonce>>24);
@@ -52,6 +54,38 @@ class HeaderHasher {
   second[8]=0x80000000;second[15]=256;
   auto final=initial();compress(final,second);
   Hash out{};for(int i=0;i<32;i++)out[i]=final[i/4]>>(24-8*(i%4));return out;
+ }
+ // ARMv8 SHA-2 path, identical output byte order.
+ Hash hashHw(uint32_t nonce) const {
+  uint8_t raw[32];
+  np::header_hash_hw(mid.data(),tail.data(),nonce,raw);
+  Hash out{};std::copy(raw,raw+32,out.begin());return out;
+ }
+ // The hardware path is used only after it reproduces the generic path hash for
+ // hash on this device. One mismatch disables it for the whole run.
+ // Cost: 1030 extra hashes, about a millisecond at 4 MH/s, once per process.
+ static bool hardwareVerified(){
+  static const bool ok=[]{
+   if(!np::hw_available())return false;
+   Bytes probe(80);for(size_t i=0;i<probe.size();i++)probe[i]=uint8_t(i*7+3);
+   HeaderHasher t(probe);
+   for(uint32_t n=0;n<1024;n++)if(t.hashHw(n)!=t.hashGeneric(n))return false;
+   for(uint32_t n:{0U,1U,0x12abU,0x7fffffffU,0x80000000U,0xffffffffU})
+    if(t.hashHw(n)!=t.hashGeneric(n))return false;
+   return true;
+  }();
+  return ok;
+ }
+ // Reported by the offline benchmark so the two paths are distinguishable.
+ static bool hardwareAccelerated(){return hardwareVerified();}
+ // "absent": the CPU has no SHA-2 unit. "failed": the unit is there but our
+ // sequence produced a different digest, so it is never used. "active": verified.
+ static const char* hardwareStatus(){
+  if(!np::hw_available())return "absent";
+  return hardwareVerified()?"active":"failed";
+ }
+ Hash hash(uint32_t nonce) const {
+  return hardwareVerified()?hashHw(nonce):hashGeneric(nonce);
  }
 };
 

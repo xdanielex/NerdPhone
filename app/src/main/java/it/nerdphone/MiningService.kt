@@ -10,9 +10,11 @@ class MiningService : Service() {
  private var seenBlocks = 0L
  private var previousHashes = 0L
  private var previousTime = 0L
+ private var ticks = 0
  private lateinit var manager: NotificationManager
  private val tick = object : Runnable {
   override fun run() {
+   if(ticks++ % 30 == 0) Thermal.sample(this@MiningService)
    val s = JSONObject(Native.snapshot())
    val now = SystemClock.elapsedRealtime()
    val hashes = s.optLong("hashes")
@@ -51,6 +53,7 @@ class MiningService : Service() {
  override fun onStartCommand(intent:Intent?,flags:Int,startId:Int):Int {
   if(intent?.action=="STOP"){stopSelf();return START_NOT_STICKY}
   startForeground(1,notification("Starting…"))
+  Thermal.reset(); Thermal.sample(this)
   if(JSONObject(Native.snapshot()).optBoolean("running"))return START_NOT_STICKY
   val p=getSharedPreferences("config",MODE_PRIVATE)
   val host=p.getString("host","").orEmpty();val user=p.getString("user","").orEmpty()

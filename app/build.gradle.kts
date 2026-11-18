@@ -7,8 +7,8 @@ android {
   applicationId = "it.nerdphone"
   minSdk = 26
   targetSdk = 35
-  versionCode = 10
-  versionName = "0.2.4-midstate-test"
+  versionCode = 19
+  versionName = "0.3.2"
   ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86_64") }
   externalNativeBuild { cmake { cppFlags += "-std=c++17" } }
  }
